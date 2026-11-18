@@ -33,6 +33,10 @@ It's simple, which is part of why it's popular:
 
 One important platform quirk up front: macOS does not honor Wazuh's realtime syscheck flag. The agent logs a realtime-unsupported warning when you try. So everything here relies on **scheduled** scans, not realtime. That detail ends up mattering a lot.
 
+![Agent syscheck configuration showing the user LaunchAgents directory under monitoring](images/P5-03_agent-ossec-syscheck-preedit.png)
+
+*The agent syscheck config, with the user LaunchAgents directory added to the monitored set. Sensitive values (username, host, addresses) are redacted throughout these screenshots; rule IDs, hashes, and ATT&CK details are left intact as evidence.*
+
 ## Hypothesis
 
 If I create a new `.plist` in the monitored directory, the next scheduled scan should fire syscheck rule 554 (file added), and the alert should carry enough metadata (hashes, owner, permissions) to prove exactly what landed on disk.
@@ -40,6 +44,10 @@ If I create a new `.plist` in the monitored directory, the next scheduled scan s
 ## Control group
 
 Before touching anything, I catalogued what was already in the directory: three legitimate Google updater plists, all owned by the user, matching timestamps, triaged as benign. These became my "must not fire" baseline. If my detection is clean, these stay silent for the whole test. If they light up, my signal is noisy and I have a problem.
+
+![Baseline directory listing showing three legitimate Google updater plists](images/P5-01_launchagents-baseline-listing.png)
+
+*The baseline: three legitimate Google updater plists already in the directory. This is the control group that has to stay silent for the detection to count as clean.*
 
 ## Running the attack
 
@@ -49,6 +57,14 @@ I dropped a deliberately harmless proof-of-concept payload into the monitored di
 - The payload just appends a timestamp to a local log file. It proves execution without doing anything destructive.
 - Validated it with `plutil -lint` before deploying.
 - No `sudo`, since the user owns the directory. Same as the real technique.
+
+![The proof-of-concept payload plist staged and validated with plutil -lint](images/P5-02_payload-plist-staged-and-linted.png)
+
+*The benign payload staged and validated with `plutil -lint` before deployment. RunAtLoad is set to true, and the payload only writes a timestamp to a local log.*
+
+![The payload copied into LaunchAgents with its SHA256 captured from the filesystem](images/P5-04_payload-dropped-launchagents-fs-capture.png)
+
+*The payload dropped into LaunchAgents, with its SHA256 captured straight from the filesystem. This hash is one half of the chain of evidence. The other half comes from the manager alert below.*
 
 ## A pre-flight check that saved the result
 
@@ -65,6 +81,10 @@ Inside the scheduled-scan window, the manager logged the alert:
 - Full metadata: size, permissions, inode, owner (user and group), and MD5 / SHA1 / SHA256
 
 The SHA256 in the alert matched the hash of the file on disk exactly. That closes the chain of evidence: the thing the SIEM flagged is provably the thing I dropped, not a guess.
+
+![Manager rule 554 alert showing file added, scheduled mode, and a matching SHA256](images/P5-05_rule554-file-added-manager-alert.png)
+
+*The manager's rule 554 alert: file added, Mode scheduled, full metadata, and a SHA256 that matches the filesystem capture above exactly. That match is the chain of evidence closed.*
 
 And the three legitimate plists? They stayed quiet. One clean addition, zero false positives.
 
