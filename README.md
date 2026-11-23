@@ -58,6 +58,7 @@ Every screenshot and log excerpt in these writeups is sanitized. Real IPs, hostn
 
 The full phase writeups publish here over time. Available now:
 
+- [Phases 0 to 2: Building the monitoring plane (server, zero-trust access, first agent)](phases/phase-00-02-infrastructure.md)
 - [Phase 5: macOS LaunchAgent persistence (T1543.001)](phases/phase-05-launchagent-persistence.md)
 
 ## Status
